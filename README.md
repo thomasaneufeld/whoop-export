@@ -126,19 +126,7 @@ After running a new export, just refresh the page to see updated data.
 
 ### Customize the Dashboard
 
-The dashboard is a single HTML file with Chart.js. It's fully customizable -- just ask Claude Code to add new tabs, charts, layouts, or metrics. For example:
-
-```
-Add a weight training tab that shows my volume trends and PRs
-```
-```
-Add a weekly summary card to the Today view
-```
-```
-Change the dashboard to a dark blue theme
-```
-
-All your exported data is available in `dashboard_data.json` so Claude can build whatever views you want on top of it.
+The dashboard is a single HTML file with Chart.js. It's fully customizable -- just ask Claude Code to add new tabs, charts, layouts, or metrics. All your exported data is available in `dashboard_data.json` so Claude can build whatever views you want on top of it.
 
 ## Step 8 (Optional): Daily Auto-Export on Windows
 
