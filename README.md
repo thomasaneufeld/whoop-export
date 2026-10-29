@@ -54,7 +54,10 @@ Copy `.env.example` to `.env` and fill in your values:
 ```
 WHOOP_CLIENT_ID=your_client_id_here
 WHOOP_CLIENT_SECRET=your_secret_here
+TIMEZONE=America/Los_Angeles
 ```
+
+Set `TIMEZONE` to your local timezone (e.g. `America/New_York`, `America/Chicago`, `Europe/London`). This ensures your dashboard data lines up with the dates in the WHOOP app. Defaults to `America/Los_Angeles` if not set.
 
 Never share your `.env` file with anyone.
 

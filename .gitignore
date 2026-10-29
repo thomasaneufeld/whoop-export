@@ -3,3 +3,5 @@ tokens.json
 data/
 __pycache__/
 *.pyc
+dashboard_data.json
+.claude/

@@ -10,7 +10,8 @@ import secrets
 import sys
 import time
 import webbrowser
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlencode, urlparse, parse_qs
@@ -29,6 +30,8 @@ API_BASE = "https://api.prod.whoop.com/developer"
 SCOPES = "offline read:recovery read:cycles read:sleep read:workout read:profile read:body_measurement"
 TOKENS_FILE = Path(__file__).parent / "tokens.json"
 DATA_DIR = Path(__file__).parent / "data"
+TIMEZONE = os.environ.get("TIMEZONE", "America/Los_Angeles")
+LOCAL_TZ = ZoneInfo(TIMEZONE)
 MAX_RETRIES = 5
 
 
@@ -326,9 +329,15 @@ def cmd_export(args):
     build_dashboard_data()
 
 
+def utc_to_local_date(iso_str):
+    """Convert a UTC ISO timestamp to a local date string (YYYY-MM-DD)."""
+    dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+    return dt.astimezone(LOCAL_TZ).strftime("%Y-%m-%d")
+
+
 def build_dashboard_data():
     """Aggregate exported JSON into dashboard_data.json for the dashboard."""
-    print("Building dashboard data...")
+    print(f"Building dashboard data (timezone: {TIMEZONE})...")
     from collections import Counter
 
     def load_json(name):
@@ -347,7 +356,7 @@ def build_dashboard_data():
         if r.get("score") and r.get("created_at"):
             s = r["score"]
             rec_out.append({
-                "d": r["created_at"][:10],
+                "d": utc_to_local_date(r["created_at"]),
                 "rs": round(s["recovery_score"], 1),
                 "hrv": round(s["hrv_rmssd_milli"], 1),
                 "rhr": round(s["resting_heart_rate"], 1),
@@ -362,7 +371,7 @@ def build_dashboard_data():
             sc = s["score"]
             ss = sc.get("stage_summary", {})
             sleep_out.append({
-                "d": s["start"][:10],
+                "d": utc_to_local_date(s["start"]),
                 "perf": sc.get("sleep_performance_percentage", 0),
                 "eff": round(sc.get("sleep_efficiency_percentage", 0), 1),
                 "cons": sc.get("sleep_consistency_percentage", 0),
@@ -379,30 +388,13 @@ def build_dashboard_data():
     for c in cycles:
         if c.get("score") and c.get("start"):
             strain_out.append({
-                "d": c["start"][:10],
+                "d": utc_to_local_date(c["start"]),
                 "strain": round(c["score"]["strain"], 1),
                 "cal": round(c["score"]["kilojoule"] * 0.239006, 0),
                 "avg_hr": c["score"]["average_heart_rate"],
                 "max_hr": c["score"]["max_heart_rate"],
             })
     strain_out.sort(key=lambda x: x["d"])
-
-    # Build cycle time ranges to assign workouts to the correct cycle date
-    cycle_ranges = []
-    for c in cycles:
-        if c.get("start"):
-            cycle_ranges.append({
-                "start": c["start"],
-                "end": c.get("end") or "9999-12-31T23:59:59Z",
-                "d": c["start"][:10],
-            })
-    cycle_ranges.sort(key=lambda x: x["start"])
-
-    def find_cycle_date(workout_start):
-        for cr in reversed(cycle_ranges):
-            if workout_start >= cr["start"]:
-                return cr["d"]
-        return workout_start[:10]
 
     workout_out = []
     for w in workouts:
@@ -413,7 +405,7 @@ def build_dashboard_data():
                 e_dt = datetime.fromisoformat(w["end"].replace("Z", "+00:00"))
                 dur = round((e_dt - s_dt).total_seconds() / 60)
             workout_out.append({
-                "d": find_cycle_date(w["start"]),
+                "d": utc_to_local_date(w["start"]),
                 "sport": w.get("sport_name", "unknown"),
                 "strain": round(w["score"]["strain"], 1),
                 "avg_hr": w["score"]["average_heart_rate"],
@@ -422,6 +414,15 @@ def build_dashboard_data():
                 "dur": dur,
             })
     workout_out.sort(key=lambda x: x["d"])
+
+    # Fix stale cycle strain: use workout strain when it exceeds the cycle value
+    workout_strain_by_date = {}
+    for w in workout_out:
+        workout_strain_by_date[w["d"]] = workout_strain_by_date.get(w["d"], 0) + w["strain"]
+    for s in strain_out:
+        ws = workout_strain_by_date.get(s["d"], 0)
+        if ws > s["strain"]:
+            s["strain"] = round(ws, 1)
 
     sports = dict(Counter(w["sport"] for w in workout_out).most_common())
 
