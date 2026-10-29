@@ -252,7 +252,7 @@ def merge_records(json_path, new_records, paginated):
 
     seen = set()
     merged = []
-    for r in existing + new_records:
+    for r in new_records + existing:
         key = record_key(r)
         if key and key not in seen:
             seen.add(key)
