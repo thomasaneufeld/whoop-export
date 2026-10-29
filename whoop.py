@@ -370,17 +370,24 @@ def build_dashboard_data():
         if s.get("score") and not s.get("nap"):
             sc = s["score"]
             ss = sc.get("stage_summary", {})
+            sn = sc.get("sleep_needed", {})
+            total_sleep = ss.get("total_in_bed_time_milli", 0) - ss.get("total_awake_time_milli", 0)
+            total_need = sn.get("baseline_milli", 0) + sn.get("need_from_sleep_debt_milli", 0) + sn.get("need_from_recent_strain_milli", 0) - sn.get("need_from_recent_nap_milli", 0)
             sleep_out.append({
                 "d": utc_to_local_date(s["start"]),
                 "perf": sc.get("sleep_performance_percentage", 0),
                 "eff": round(sc.get("sleep_efficiency_percentage", 0), 1),
-                "cons": sc.get("sleep_consistency_percentage", 0),
                 "rr": round(sc.get("respiratory_rate", 0), 1),
                 "bed": round(ss.get("total_in_bed_time_milli", 0) / 3600000, 2),
+                "slept": round(total_sleep / 3600000, 2),
+                "needed": round(total_need / 3600000, 2),
+                "debt": round(sn.get("need_from_sleep_debt_milli", 0) / 3600000, 2),
+                "strain_need": round(sn.get("need_from_recent_strain_milli", 0) / 3600000, 2),
                 "rem": round(ss.get("total_rem_sleep_time_milli", 0) / 3600000, 2),
                 "sws": round(ss.get("total_slow_wave_sleep_time_milli", 0) / 3600000, 2),
                 "light": round(ss.get("total_light_sleep_time_milli", 0) / 3600000, 2),
                 "awake": round(ss.get("total_awake_time_milli", 0) / 3600000, 2),
+                "dist": ss.get("disturbance_count", 0),
             })
     sleep_out.sort(key=lambda x: x["d"])
 

@@ -1033,7 +1033,7 @@ function renderDaySection(date, prevDate, label) {
       <div class="today-card">
         <div class="chart-title">Sleep</div>
         <div style="display:flex; gap:24px; margin-bottom:16px; flex-wrap:wrap;">
-          <div><div class="stat-label">Time in Bed</div><div class="stat-value" style="font-size:22px">${slp.bed.toFixed(1)}<span class="stat-unit"> hrs</span></div></div>
+          <div><div class="stat-label">Hours vs Needed</div><div class="stat-value" style="font-size:22px">${slp.slept != null ? slp.slept.toFixed(1) : slp.bed.toFixed(1)}<span class="stat-unit"> / ${slp.needed != null ? slp.needed.toFixed(1) : '--'} hrs</span></div></div>
           <div><div class="stat-label">Performance</div><div class="stat-value" style="font-size:22px">${slp.perf}<span class="stat-unit">%</span></div></div>
           <div><div class="stat-label">Efficiency</div><div class="stat-value" style="font-size:22px">${slp.eff}<span class="stat-unit">%</span></div></div>
         </div>
@@ -1041,7 +1041,7 @@ function renderDaySection(date, prevDate, label) {
         <div class="sleep-stage-row"><div class="sleep-stage-label">Deep</div><div class="sleep-stage-bar-bg"><div class="sleep-stage-bar" style="width:${pct(slp.sws)}%; background:${COLORS.purple}"></div></div><div class="sleep-stage-value">${slp.sws.toFixed(1)}h</div></div>
         <div class="sleep-stage-row"><div class="sleep-stage-label">Light</div><div class="sleep-stage-bar-bg"><div class="sleep-stage-bar" style="width:${pct(slp.light)}%; background:${COLORS.green}"></div></div><div class="sleep-stage-value">${slp.light.toFixed(1)}h</div></div>
         <div class="sleep-stage-row"><div class="sleep-stage-label">Awake</div><div class="sleep-stage-bar-bg"><div class="sleep-stage-bar" style="width:${pct(slp.awake)}%; background:${COLORS.orange}"></div></div><div class="sleep-stage-value">${slp.awake.toFixed(1)}h</div></div>
-        <div style="margin-top:12px; font-size:12px; color:var(--fg-muted)">Respiratory rate: ${slp.rr} breaths/min · Consistency: ${slp.cons}%</div>
+        <div style="margin-top:12px; font-size:12px; color:var(--fg-muted)">Respiratory rate: ${slp.rr} breaths/min · Disturbances: ${slp.dist != null ? slp.dist : '--'}${slp.debt ? ` · Sleep debt: ${slp.debt.toFixed(1)}h` : ''}${slp.strain_need ? ` · Strain need: ${slp.strain_need.toFixed(1)}h` : ''}</div>
       </div>
     `;
   }
