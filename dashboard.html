@@ -1055,6 +1055,10 @@ function renderDaySection(date, prevDate, label) {
           <div class="stat-value" style="font-size:22px">${str ? str.strain.toFixed(1) : '--'}</div>
         </div>
         <div>
+          <div class="stat-label">Workout Strain</div>
+          <div class="stat-value" style="font-size:22px">${workouts.length > 0 ? workouts.reduce((s,w) => s + w.strain, 0).toFixed(1) : '--'}</div>
+        </div>
+        <div>
           <div class="stat-label">Total Calories</div>
           <div class="stat-value" style="font-size:22px">${str ? Math.round(str.cal).toLocaleString() : '--'}</div>
         </div>
