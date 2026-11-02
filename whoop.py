@@ -335,6 +335,16 @@ def utc_to_local_date(iso_str):
     return dt.astimezone(LOCAL_TZ).strftime("%Y-%m-%d")
 
 
+def cycle_date(cycle):
+    """Get the calendar date a cycle covers. WHOOP cycles run wake-to-wake,
+    so the end timestamp lands on the day the cycle represents."""
+    if cycle.get("end"):
+        return utc_to_local_date(cycle["end"])
+    dt = datetime.fromisoformat(cycle["start"].replace("Z", "+00:00"))
+    next_day = dt + timedelta(days=1)
+    return next_day.astimezone(LOCAL_TZ).strftime("%Y-%m-%d")
+
+
 def build_dashboard_data():
     """Aggregate exported JSON into dashboard_data.json for the dashboard."""
     print(f"Building dashboard data (timezone: {TIMEZONE})...")
@@ -351,12 +361,19 @@ def build_dashboard_data():
     profile = load_json("profile")
     body = load_json("body")
 
+    # Map cycle IDs to the calendar date the cycle covers
+    cycle_id_to_date = {}
+    for c in cycles:
+        if c.get("start") and c.get("id"):
+            cycle_id_to_date[c["id"]] = cycle_date(c)
+
     rec_out = []
     for r in recovery:
-        if r.get("score") and r.get("created_at"):
+        if r.get("score"):
             s = r["score"]
+            d = cycle_id_to_date.get(r.get("cycle_id")) or utc_to_local_date(r["created_at"])
             rec_out.append({
-                "d": utc_to_local_date(r["created_at"]),
+                "d": d,
                 "rs": round(s["recovery_score"], 1),
                 "hrv": round(s["hrv_rmssd_milli"], 1),
                 "rhr": round(s["resting_heart_rate"], 1),
@@ -373,8 +390,9 @@ def build_dashboard_data():
             sn = sc.get("sleep_needed", {})
             total_sleep = ss.get("total_in_bed_time_milli", 0) - ss.get("total_awake_time_milli", 0)
             total_need = sn.get("baseline_milli", 0) + sn.get("need_from_sleep_debt_milli", 0) + sn.get("need_from_recent_strain_milli", 0) - sn.get("need_from_recent_nap_milli", 0)
+            d = cycle_id_to_date.get(s.get("cycle_id")) or utc_to_local_date(s["start"])
             sleep_out.append({
-                "d": utc_to_local_date(s["start"]),
+                "d": d,
                 "perf": sc.get("sleep_performance_percentage", 0),
                 "eff": round(sc.get("sleep_efficiency_percentage", 0), 1),
                 "rr": round(sc.get("respiratory_rate", 0), 1),
@@ -391,17 +409,20 @@ def build_dashboard_data():
             })
     sleep_out.sort(key=lambda x: x["d"])
 
-    strain_out = []
+    strain_by_date = {}
     for c in cycles:
         if c.get("score") and c.get("start"):
-            strain_out.append({
-                "d": utc_to_local_date(c["start"]),
-                "strain": round(c["score"]["strain"], 1),
+            d = cycle_date(c)
+            entry = {
+                "d": d,
+                "strain": min(round(c["score"]["strain"], 1), 21.0),
                 "cal": round(c["score"]["kilojoule"] * 0.239006, 0),
                 "avg_hr": c["score"]["average_heart_rate"],
                 "max_hr": c["score"]["max_heart_rate"],
-            })
-    strain_out.sort(key=lambda x: x["d"])
+            }
+            if d not in strain_by_date or entry["strain"] > strain_by_date[d]["strain"]:
+                strain_by_date[d] = entry
+    strain_out = sorted(strain_by_date.values(), key=lambda x: x["d"])
 
     workout_out = []
     for w in workouts:
@@ -421,15 +442,6 @@ def build_dashboard_data():
                 "dur": dur,
             })
     workout_out.sort(key=lambda x: x["d"])
-
-    # Fix stale cycle strain: use workout strain when it exceeds the cycle value
-    workout_strain_by_date = {}
-    for w in workout_out:
-        workout_strain_by_date[w["d"]] = workout_strain_by_date.get(w["d"], 0) + w["strain"]
-    for s in strain_out:
-        ws = workout_strain_by_date.get(s["d"], 0)
-        if ws > s["strain"]:
-            s["strain"] = round(ws, 1)
 
     sports = dict(Counter(w["sport"] for w in workout_out).most_common())
 
