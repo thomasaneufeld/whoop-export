@@ -335,14 +335,13 @@ def utc_to_local_date(iso_str):
     return dt.astimezone(LOCAL_TZ).strftime("%Y-%m-%d")
 
 
-def cycle_date(cycle):
-    """Get the calendar date a cycle covers. WHOOP cycles run wake-to-wake,
-    so the end timestamp lands on the day the cycle represents."""
-    if cycle.get("end"):
-        return utc_to_local_date(cycle["end"])
-    dt = datetime.fromisoformat(cycle["start"].replace("Z", "+00:00"))
-    next_day = dt + timedelta(days=1)
-    return next_day.astimezone(LOCAL_TZ).strftime("%Y-%m-%d")
+def cycle_date(cycle, wake_by_cycle):
+    """Calendar date a cycle covers. WHOOP cycles start at sleep onset (often
+    near midnight), so label them by the local date you woke up."""
+    wake = wake_by_cycle.get(cycle.get("id"))
+    if wake:
+        return utc_to_local_date(wake)
+    return utc_to_local_date(cycle.get("end") or cycle["start"])
 
 
 def build_dashboard_data():
@@ -362,10 +361,14 @@ def build_dashboard_data():
     body = load_json("body")
 
     # Map cycle IDs to the calendar date the cycle covers
+    wake_by_cycle = {}
+    for s in sleep_data:
+        if not s.get("nap") and s.get("end") and s.get("cycle_id"):
+            wake_by_cycle[s["cycle_id"]] = s["end"]
     cycle_id_to_date = {}
     for c in cycles:
         if c.get("start") and c.get("id"):
-            cycle_id_to_date[c["id"]] = cycle_date(c)
+            cycle_id_to_date[c["id"]] = cycle_date(c, wake_by_cycle)
 
     rec_out = []
     for r in recovery:
@@ -412,7 +415,7 @@ def build_dashboard_data():
     strain_by_date = {}
     for c in cycles:
         if c.get("score") and c.get("start"):
-            d = cycle_date(c)
+            d = cycle_id_to_date[c["id"]]
             entry = {
                 "d": d,
                 "strain": min(round(c["score"]["strain"], 1), 21.0),

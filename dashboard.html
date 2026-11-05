@@ -1055,8 +1055,8 @@ function renderDaySection(date, prevDate, label) {
           <div class="stat-value" style="font-size:22px">${str ? Math.min(str.strain, 21).toFixed(1) : '--'}</div>
         </div>
         <div>
-          <div class="stat-label">Workout Strain</div>
-          <div class="stat-value" style="font-size:22px">${workouts.length > 0 ? Math.min(workouts.reduce((s,w) => s + w.strain, 0), 21).toFixed(1) : '--'}</div>
+          <div class="stat-label">Top Workout</div>
+          <div class="stat-value" style="font-size:22px">${workouts.length > 0 ? Math.max(...workouts.map(w => w.strain)).toFixed(1) : '--'}</div>
         </div>
         <div>
           <div class="stat-label">Total Calories</div>
